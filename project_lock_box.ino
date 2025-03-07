@@ -1,15 +1,21 @@
 int const RX_PIN = 3; //this is the RX pin, this receives the bluetooh
 int const TX_PIN = 2; //this is the TX pin, the transmits
 #include <SoftwareSerial.h>
+#include <SPI.h> //for RFID
+#include <MFRC522.h>//for RFID
 #define REDPIN 5
 #define YELLOWPIN 6
 #define GREENPIN 7
+#define RST_PIN 9        
+#define SS_PIN 10         
 //tell code to use servo library
 # include <Servo.h>
 # define DOOR_PIN 1
 //make a servo obect
 
 SoftwareSerial safe(TX_PIN, RX_PIN); //makes a bluetooth object
+MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create MFRC522 instance
+
 //set tx and rx pins
 //tx goes first, then rx
 char lock;
@@ -24,11 +30,17 @@ void setup() {
   pinMode(GREENPIN, OUTPUT);
   door.attach(DOOR_PIN); //connecting the servo object to the pin
   door.write(0); //set start of propeller to 90 degrees
+  while (!Serial);		// Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
+	SPI.begin();			// Init SPI bus
+	mfrc522.PCD_Init();		// Init MFRC522
+	delay(4);				// Optional delay. Some board do need more time after init to be ready, see Readme
+	mfrc522.PCD_DumpVersionToSerial();	// Show details of PCD - MFRC522 Card Reader details
+	Serial.println(F("Scan PICC to see UID, SAK, type, and data blocks..."));
 }
 
 void loop() {
+  int alarm;
   // put your main code here, to run repeatedly:
-  int alarm = 2;
   Serial.print(alarm);
   Serial.println(safe.available());
   if (safe.available()>0){
@@ -37,35 +49,71 @@ void loop() {
     safe.print(lock);
     safe.print(safe);
   }
-    if(lock == 'o' && alarm==2){//when the safe opens
+    if(lock == 'o'){//when the safe opens
     digitalWrite(GREENPIN, HIGH);
     digitalWrite(YELLOWPIN, LOW);
     digitalWrite(REDPIN, LOW);
     door.write(90);
     delay(100);
-    alarm = alarm-2;
-  } else if(lock == 'c' && alarm == alarm-2){//when the safe closes
-    digitalWrite(YELLOWPIN, HIGH);
-    delay(1000);
-    digitalWrite(REDPIN, LOW);
-    digitalWrite(GREENPIN, LOW);
-    door.write(0);
-    alarm = alarm +2;
-  } else if (lock != 'o' && lock != 'c' && safe.available() != 0 && alarm==2){//when the alarm goes off
-    alarm = alarm-1;
-  } else if (alarm==2){ //when nothing is being inputted
+  } else if(lock == 'c'){//when the safe closes
     digitalWrite(GREENPIN, LOW);
     digitalWrite(REDPIN, LOW);
     digitalWrite(YELLOWPIN, HIGH);
     delay(500);
     digitalWrite(YELLOWPIN, LOW);
     delay(500);
-  // } else if (alarm ==1 && lock =='stop alarm'){//stop the alarm
-  //   alarm=2;
-  } else if (safe.available() > 0 && alarm==alarm-1){
+    door.write(0);
+  } else if (lock != 'o' && lock != 'c' && safe.available() > 0){//when you put in the wrong password
     Serial.println("locked");
     digitalWrite(REDPIN, HIGH);
     delay(1000);
+  } else { //when nothing is being inputted
+    digitalWrite(GREENPIN, LOW);
+    digitalWrite(REDPIN, LOW);
+    digitalWrite(YELLOWPIN, HIGH);
+    delay(500);
+    digitalWrite(YELLOWPIN, LOW);
+    delay(500);
+    door.write(0);
   }
-  delay(100);
+  	// Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
+	if ( ! mfrc522.PICC_IsNewCardPresent()) {
+		return;
+	}
+
+	// Select one of the cards
+	if ( ! mfrc522.PICC_ReadCardSerial()) {
+		return;
+	}
+
+	// Dump debug info about the card; PICC_HaltA() is automatically called
+	// mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
+  MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
+
+
+
+Serial.print(F("RFID Tag UID:"));
+
+printHex(mfrc522.uid.uidByte, mfrc522.uid.size);
+
+Serial.println("");
+
+
+
+mfrc522.PICC_HaltA(); // Halt PICC
+
 }
+
+void printHex(byte *buffer, byte bufferSize) {
+
+
+
+ //Serial.begin("reading?");
+
+for (byte i = 0; i < bufferSize; i++) {
+
+Serial.print(buffer[i] < 0x10 ? " 0" : " ");
+
+Serial.print(buffer[i], HEX);
+  delay(100);
+}}
