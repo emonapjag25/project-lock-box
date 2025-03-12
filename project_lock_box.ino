@@ -1,5 +1,6 @@
 int const RX_PIN = 3; //this is the RX pin, this receives the bluetooh
 int const TX_PIN = 2; //this is the TX pin, the transmits
+#include <Arduino.h>
 #include <SoftwareSerial.h>
 #include <SPI.h> //for RFID
 #include <MFRC522.h>//for RFID
@@ -15,6 +16,7 @@ int const TX_PIN = 2; //this is the TX pin, the transmits
 
 SoftwareSerial safe(TX_PIN, RX_PIN); //makes a bluetooth object
 MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create MFRC522 instance
+byte card =0;
 
 //set tx and rx pins
 //tx goes first, then rx
@@ -38,11 +40,12 @@ void setup() {
 	Serial.println(F("Scan PICC to see UID, SAK, type, and data blocks..."));
 }
 
+
 void loop() {
   int alarm;
   // put your main code here, to run repeatedly:
-  Serial.print(alarm);
-  Serial.println(safe.available());
+ // Serial.print(alarm);
+ // Serial.println(safe.available());
   if (safe.available()>0){
     lock = safe.read();
     safe.print("reading new input: ");
@@ -55,7 +58,7 @@ void loop() {
     digitalWrite(REDPIN, LOW);
     door.write(90);
     delay(100);
-  } else if(lock == 'c'){//when the safe closes
+  } else if(lock == 'c'/*||printHex()*/){//when the safe closes
     digitalWrite(GREENPIN, LOW);
     digitalWrite(REDPIN, LOW);
     digitalWrite(YELLOWPIN, HIGH);
@@ -63,7 +66,8 @@ void loop() {
     digitalWrite(YELLOWPIN, LOW);
     delay(500);
     door.write(0);
-  } else if (lock != 'o' && lock != 'c' && safe.available() > 0){//when you put in the wrong password
+  }
+  else if (lock != 'o' && lock != 'c' && safe.available() > 0){//when you put in the wrong password
     Serial.println("locked");
     digitalWrite(REDPIN, HIGH);
     delay(1000);
@@ -99,11 +103,9 @@ printHex(mfrc522.uid.uidByte, mfrc522.uid.size);
 Serial.println("");
 
 
-
 mfrc522.PICC_HaltA(); // Halt PICC
 
 }
-
 void printHex(byte *buffer, byte bufferSize) {
 
 
@@ -113,7 +115,9 @@ void printHex(byte *buffer, byte bufferSize) {
 for (byte i = 0; i < bufferSize; i++) {
 
 Serial.print(buffer[i] < 0x10 ? " 0" : " ");
-
 Serial.print(buffer[i], HEX);
   delay(100);
-}}
+}
+
+
+}
