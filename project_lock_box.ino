@@ -1,22 +1,22 @@
 int const RX_PIN = 3; //this is the RX pin, this receives the bluetooh
-int const TX_PIN = 2; //this is the TX pin, the transmits
+int const TX_PIN = 2; //this is the TX pin, this transmits the bluetooth
+
+#define TRIGGERPIN 0 //pin that sends out the pulse, for ultrasonic sensor
+#define ECHOPIN 1 //pin that reads the distance, for ultrasonic sensor
+#define REDPIN 5
+#define YELLOWPIN 6
+#define GREENPIN 7
+#define RST_PIN 9 //for RFID       
+#define SS_PIN 10 //for RFID        
+
+# define DOOR_PIN 4 //make a servo obect
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include <SPI.h> //for RFID
 #include <MFRC522.h>//for RFID
-#define REDPIN 5
-#define YELLOWPIN 6
-#define GREENPIN 7
-#define RST_PIN 9        
-#define SS_PIN 10         
-//tell code to use servo library
-# include <Servo.h>
-# define DOOR_PIN 1
-//make a servo obect
-
+#include <Servo.h> //tell code to use servo library
 SoftwareSerial safe(TX_PIN, RX_PIN); //makes a bluetooth object
 MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create MFRC522 instance
-byte card =0;
 
 //set tx and rx pins
 //tx goes first, then rx
@@ -32,6 +32,8 @@ void setup() {
   pinMode(GREENPIN, OUTPUT);
   door.attach(DOOR_PIN); //connecting the servo object to the pin
   door.write(0); //set start of propeller to 90 degrees
+  pinMode(TRIGGERPIN, OUTPUT); //sends pulse
+  pinMode(ECHOPIN, INPUT); //reads pulse
   while (!Serial);		// Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
 	SPI.begin();			// Init SPI bus
 	mfrc522.PCD_Init();		// Init MFRC522
@@ -43,7 +45,21 @@ void setup() {
 
 void loop() {
   int alarm;
-  // put your main code here, to run repeatedly:
+  digitalWrite(TRIGGERPIN, LOW); //turn trigger pin off to give clean starting point
+  delayMicroseconds(2);//really fast delay
+  digitalWrite(TRIGGERPIN, HIGH); //turn trigger pin on
+  delayMicroseconds(10);//10 millisecond delay so that the microsensor can read the pulse before the next one
+  //make the ECHHOPIN results a float so that it's more precise
+  float duration = pulseIn(ECHOPIN, HIGH); //tells the time from pulse sent to pulse received
+  Serial.println(duration); //prints out the duration
+
+  //distance = speed * duration
+  float speed = 0.034; //measured in cm/microseconds
+  float distance = (speed * duration)/2; //measured in cm, divided by two to account for the sensor pulse forward and back
+
+  Serial.print("distance: "); //prints out the distance
+  Serial.print(distance);
+  delay(100); //delay for a tenth of a second
  // Serial.print(alarm);
  // Serial.println(safe.available());
   if (safe.available()>0){
@@ -105,7 +121,7 @@ Serial.println("");
 
 mfrc522.PICC_HaltA(); // Halt PICC
 
-}
+}//end of void loop
 void printHex(byte *buffer, byte bufferSize) {
 
 
