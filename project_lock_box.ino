@@ -1,15 +1,15 @@
 int const RX_PIN = 3; //this is the RX pin, this receives the bluetooh
 int const TX_PIN = 2; //this is the TX pin, this transmits the bluetooth
 
-#define TRIGGERPIN 0 //pin that sends out the pulse, for ultrasonic sensor
-#define ECHOPIN 1 //pin that reads the distance, for ultrasonic sensor
+#define TRIGGERPIN 4 //pin that sends out the pulse, for ultrasonic sensor
+#define ECHOPIN 8 //pin that reads the distance, for ultrasonic sensor
 #define REDPIN 5
 #define YELLOWPIN 6
 #define GREENPIN 7
 #define RST_PIN 9 //for RFID       
 #define SS_PIN 10 //for RFID        
 
-# define DOOR_PIN 4 //make a servo obect
+# define DOOR_PIN 0 //make a servo obect
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include <SPI.h> //for RFID
@@ -74,7 +74,7 @@ void loop() {
     digitalWrite(REDPIN, LOW);
     door.write(90);
     delay(100);
-  } else if(lock == 'c'/*||printHex()*/){//when the safe closes
+  } else if(lock == 'c'/*||printHex()*/||distance> 10){//when the safe closes
     digitalWrite(GREENPIN, LOW);
     digitalWrite(REDPIN, LOW);
     digitalWrite(YELLOWPIN, HIGH);
@@ -83,11 +83,12 @@ void loop() {
     delay(500);
     door.write(0);
   }
-  else if (lock != 'o' && lock != 'c' && safe.available() > 0){//when you put in the wrong password
+  else if (lock != 'o' && lock != 'c' && safe.available() > 0 || distance < 10){//when you put in the wrong password
     Serial.println("locked");
     digitalWrite(REDPIN, HIGH);
     delay(1000);
-  } else { //when nothing is being inputted
+  } 
+  else { //when nothing is being inputted
     digitalWrite(GREENPIN, LOW);
     digitalWrite(REDPIN, LOW);
     digitalWrite(YELLOWPIN, HIGH);
@@ -96,6 +97,7 @@ void loop() {
     delay(500);
     door.write(0);
   }
+  
   	// Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
 	if ( ! mfrc522.PICC_IsNewCardPresent()) {
 		return;
