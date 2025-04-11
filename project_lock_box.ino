@@ -8,8 +8,8 @@ int const TX_PIN = 2; //this is the TX pin, this transmits the bluetooth
 #define GREENPIN 7
 #define RST_PIN 9 //for RFID       
 #define SS_PIN 10 //for RFID        
+#define DOOR_PIN A5 //make a servo obect
 
-# define DOOR_PIN 0 //make a servo obect
 #include <Arduino.h>
 #include <SoftwareSerial.h>
 #include <SPI.h> //for RFID
@@ -31,7 +31,7 @@ void setup() {
   pinMode(YELLOWPIN, OUTPUT);
   pinMode(GREENPIN, OUTPUT);
   door.attach(DOOR_PIN); //connecting the servo object to the pin
-  door.write(0); //set start of propeller to 90 degrees
+  door.write(140); //set start of propeller to 140 degrees
   pinMode(TRIGGERPIN, OUTPUT); //sends pulse
   pinMode(ECHOPIN, INPUT); //reads pulse
   while (!Serial);		// Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
@@ -40,55 +40,71 @@ void setup() {
 	delay(4);				// Optional delay. Some board do need more time after init to be ready, see Readme
 	mfrc522.PCD_DumpVersionToSerial();	// Show details of PCD - MFRC522 Card Reader details
 	Serial.println(F("Scan PICC to see UID, SAK, type, and data blocks..."));
-}
-
+}//end of void setup
 
 void loop() {
   int alarm;
+  int mycard = 0;
   digitalWrite(TRIGGERPIN, LOW); //turn trigger pin off to give clean starting point
   delayMicroseconds(2);//really fast delay
   digitalWrite(TRIGGERPIN, HIGH); //turn trigger pin on
   delayMicroseconds(10);//10 millisecond delay so that the microsensor can read the pulse before the next one
   //make the ECHHOPIN results a float so that it's more precise
   float duration = pulseIn(ECHOPIN, HIGH); //tells the time from pulse sent to pulse received
-  Serial.println(duration); //prints out the duration
+  // Serial.println(duration); //prints out the duration
 
   //distance = speed * duration
   float speed = 0.034; //measured in cm/microseconds
   float distance = (speed * duration)/2; //measured in cm, divided by two to account for the sensor pulse forward and back
 
-  Serial.print("distance: "); //prints out the distance
-  Serial.print(distance);
-  delay(100); //delay for a tenth of a second
- // Serial.print(alarm);
- // Serial.println(safe.available());
+  //added RFID code
+  byte authorizedUID[] = {0x73, 0x87, 0x53, 0xF5}; // my UID
+  byte uidLength = 4; // Length of the UID
+	if (mfrc522.uid.size == uidLength) {
+  boolean authorized = true;
+  for (byte i = 0; i < uidLength; i++) {
+    if (mfrc522.uid.uidByte[i] != authorizedUID[i]) {
+      authorized = false;
+      break;
+    }
+  }
+  if (authorized) {
+    mycard=1;
+    Serial.println("Access granted.");
+  	} 
+	} //added RFID code
   if (safe.available()>0){
     lock = safe.read();
     safe.print("reading new input: ");
     safe.print(lock);
     safe.print(safe);
   }
-    if(lock == 'o'){//when the safe opens
+    if(lock == 'o'||mycard==1){//when the safe opens
+    door.write(0);
     digitalWrite(GREENPIN, HIGH);
     digitalWrite(YELLOWPIN, LOW);
     digitalWrite(REDPIN, LOW);
-    door.write(90);
-    delay(100);
-  } else if(lock == 'c'/*||printHex()*/||distance> 10){//when the safe closes
+    delay(1000);
+    mycard=0;
+    
+  } else if(lock == 'c'||mycard ==0){//when the safe closes
+   mycard =0;
+    door.write(140);    
     digitalWrite(GREENPIN, LOW);
     digitalWrite(REDPIN, LOW);
     digitalWrite(YELLOWPIN, HIGH);
     delay(500);
     digitalWrite(YELLOWPIN, LOW);
     delay(500);
-    door.write(0);
   }
   else if (lock != 'o' && lock != 'c' && safe.available() > 0 || distance < 10){//when you put in the wrong password
-    Serial.println("locked");
+    door.write(140);
+    //Serial.println("locked");
     digitalWrite(REDPIN, HIGH);
     delay(1000);
   } 
   else { //when nothing is being inputted
+    door.write(140);
     digitalWrite(GREENPIN, LOW);
     digitalWrite(REDPIN, LOW);
     digitalWrite(YELLOWPIN, HIGH);
@@ -97,7 +113,6 @@ void loop() {
     delay(500);
     door.write(0);
   }
-  
   	// Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
 	if ( ! mfrc522.PICC_IsNewCardPresent()) {
 		return;
@@ -113,29 +128,24 @@ void loop() {
   MFRC522::PICC_Type piccType = mfrc522.PICC_GetType(mfrc522.uid.sak);
 
 
+  Serial.print(F("RFID Tag UID:"));
 
-Serial.print(F("RFID Tag UID:"));
+  printHex(mfrc522.uid.uidByte, mfrc522.uid.size);
 
-printHex(mfrc522.uid.uidByte, mfrc522.uid.size);
-
-Serial.println("");
+  Serial.println("");
 
 
-mfrc522.PICC_HaltA(); // Halt PICC
+  mfrc522.PICC_HaltA(); // Halt PICC
 
 }//end of void loop
+
 void printHex(byte *buffer, byte bufferSize) {
-
-
 
  //Serial.begin("reading?");
 
-for (byte i = 0; i < bufferSize; i++) {
-
-Serial.print(buffer[i] < 0x10 ? " 0" : " ");
-Serial.print(buffer[i], HEX);
-  delay(100);
-}
-
-
+  for (byte i = 0; i < bufferSize; i++) {
+  Serial.print(buffer[i] < 0x10 ? " 0" : " ");
+  Serial.print(buffer[i], HEX);
+    delay(100);
+  }
 }
