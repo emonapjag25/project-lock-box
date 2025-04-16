@@ -56,22 +56,24 @@ void loop() {
   //distance = speed * duration
   float speed = 0.034; //measured in cm/microseconds
   float distance = (speed * duration)/2; //measured in cm, divided by two to account for the sensor pulse forward and back
-
+  Serial.println(distance);
   //added RFID code
   byte authorizedUID[] = {0x73, 0x87, 0x53, 0xF5}; // my UID
   byte uidLength = 4; // Length of the UID
 	if (mfrc522.uid.size == uidLength) {
   boolean authorized = true;
   for (byte i = 0; i < uidLength; i++) {
-    if (mfrc522.uid.uidByte[i] != authorizedUID[i]) {
+    if (mfrc522.uid.uidByte[i] != authorizedUID[i]||mycard==2) {
       authorized = false;
       break;
+      mycard=0;
     }
   }
   if (authorized) {
     mycard=1;
     Serial.println("Access granted.");
-  	} 
+    delay(2000);
+  } 
 	} //added RFID code
   if (safe.available()>0){
     lock = safe.read();
@@ -79,39 +81,44 @@ void loop() {
     safe.print(lock);
     safe.print(safe);
   }
-    if(lock == 'o'||mycard==1){//when the safe opens
+    if(lock == 'o'|| mycard==1){//when the safe opens
+    // Serial.println("Safe open");
     door.write(0);
     digitalWrite(GREENPIN, HIGH);
     digitalWrite(YELLOWPIN, LOW);
     digitalWrite(REDPIN, LOW);
     delay(1000);
-    mycard=0;
+    mycard=2;
     
-  } else if(lock == 'c'||mycard ==0){//when the safe closes
+  } else if(lock == 'c'){//when the safe closes
    mycard =0;
-    door.write(140);    
+    door.write(140);
+    // Serial.println("Safe close");    
     digitalWrite(GREENPIN, LOW);
     digitalWrite(REDPIN, LOW);
     digitalWrite(YELLOWPIN, HIGH);
     delay(500);
     digitalWrite(YELLOWPIN, LOW);
     delay(500);
-  }
-  else if (lock != 'o' && lock != 'c' && safe.available() > 0 || distance < 10){//when you put in the wrong password
+  } 
+  if (distance < 10){//when you put in the wrong password
     door.write(140);
-    //Serial.println("locked");
+    Serial.println("locked");
+    digitalWrite(YELLOWPIN, LOW);
     digitalWrite(REDPIN, HIGH);
+    delay(1000);
+    digitalWrite(REDPIN, LOW);
     delay(1000);
   } 
   else { //when nothing is being inputted
-    door.write(140);
+    // door.write(140);
     digitalWrite(GREENPIN, LOW);
     digitalWrite(REDPIN, LOW);
     digitalWrite(YELLOWPIN, HIGH);
     delay(500);
     digitalWrite(YELLOWPIN, LOW);
     delay(500);
-    door.write(0);
+    // door.write(0);
   }
   	// Reset the loop if no new card present on the sensor/reader. This saves the entire process when idle.
 	if ( ! mfrc522.PICC_IsNewCardPresent()) {
@@ -122,6 +129,7 @@ void loop() {
 	if ( ! mfrc522.PICC_ReadCardSerial()) {
 		return;
 	}
+
 
 	// Dump debug info about the card; PICC_HaltA() is automatically called
 	// mfrc522.PICC_DumpToSerial(&(mfrc522.uid));
