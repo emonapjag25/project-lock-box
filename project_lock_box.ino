@@ -68,7 +68,7 @@ void loop() {
       break;
       mycard=0;
     }
-  }
+  }//end of for loop
   if (authorized) {
     mycard=1;
     Serial.println("Access granted.");
