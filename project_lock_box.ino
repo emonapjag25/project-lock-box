@@ -31,7 +31,7 @@ void setup() {
   pinMode(YELLOWPIN, OUTPUT);
   pinMode(GREENPIN, OUTPUT);
   door.attach(DOOR_PIN); //connecting the servo object to the pin
-  door.write(140); //set start of propeller to 140 degrees
+  door.write(100); //set start of propeller to 140 degrees
   pinMode(TRIGGERPIN, OUTPUT); //sends pulse
   pinMode(ECHOPIN, INPUT); //reads pulse
   while (!Serial);		// Do nothing if no serial port is opened (added for Arduinos based on ATMEGA32U4)
@@ -51,7 +51,6 @@ void loop() {
   delayMicroseconds(10);//10 millisecond delay so that the microsensor can read the pulse before the next one
   //make the ECHHOPIN results a float so that it's more precise
   float duration = pulseIn(ECHOPIN, HIGH); //tells the time from pulse sent to pulse received
-  // Serial.println(duration); //prints out the duration
 
   //distance = speed * duration
   float speed = 0.034; //measured in cm/microseconds
@@ -60,7 +59,7 @@ void loop() {
   //added RFID code
   byte authorizedUID[] = {0x73, 0x87, 0x53, 0xF5}; // my UID
   byte uidLength = 4; // Length of the UID
-	if (mfrc522.uid.size == uidLength) {
+	if (mfrc522.uid.size == uidLength) {//when any RFID is scanned
   boolean authorized = true;
   for (byte i = 0; i < uidLength; i++) {
     if (mfrc522.uid.uidByte[i] != authorizedUID[i]||mycard==2) {
@@ -69,7 +68,7 @@ void loop() {
       mycard=0;
     }
   }//end of for loop
-  if (authorized) {
+  if (authorized) {//when my RFID is scanned
     mycard=1;
     Serial.println("Access granted.");
     delay(2000);
@@ -82,7 +81,6 @@ void loop() {
     safe.print(safe);
   }
     if(lock == 'o'|| mycard==1){//when the safe opens
-    // Serial.println("Safe open");
     door.write(0);
     digitalWrite(GREENPIN, HIGH);
     digitalWrite(YELLOWPIN, LOW);
@@ -92,8 +90,7 @@ void loop() {
     
   } else if(lock == 'c'){//when the safe closes
    mycard =0;
-    door.write(140);
-    // Serial.println("Safe close");    
+    door.write(100);
     digitalWrite(GREENPIN, LOW);
     digitalWrite(REDPIN, LOW);
     digitalWrite(YELLOWPIN, HIGH);
@@ -102,7 +99,7 @@ void loop() {
     delay(500);
   } 
   if (distance < 10){//when you put in the wrong password
-    door.write(140);
+    door.write(100);
     Serial.println("locked");
     digitalWrite(YELLOWPIN, LOW);
     digitalWrite(REDPIN, HIGH);
@@ -111,7 +108,6 @@ void loop() {
     delay(1000);
   } 
   else { //when nothing is being inputted
-    // door.write(140);
     digitalWrite(GREENPIN, LOW);
     digitalWrite(REDPIN, LOW);
     digitalWrite(YELLOWPIN, HIGH);
@@ -148,8 +144,6 @@ void loop() {
 }//end of void loop
 
 void printHex(byte *buffer, byte bufferSize) {
-
- //Serial.begin("reading?");
 
   for (byte i = 0; i < bufferSize; i++) {
   Serial.print(buffer[i] < 0x10 ? " 0" : " ");
